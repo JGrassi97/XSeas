@@ -2,24 +2,13 @@ import os
 import xarray as xr
 import datetime
 
-def load_variables(base_path, variables, variables_codes):
+# -- UTILITY FUNCTIONS FOR DATE FORMATTING -- #
+# This function are used to convert a day of the year to a formatted date string.
+# Maily intended for use in plotting and labeling.
 
-    dataset = []
-    for variable, code in zip(variables, variables_codes):
-            path = os.path.join(base_path, variable, 'final.nc')
+def _get_ordinal_suffix(day : int) -> str:
+    """ Get the ordinal suffix for a given day of the month."""
 
-            try:
-                dat = xr.open_dataset(path)[code].mean('plev')
-            except:
-                dat =xr.open_dataset(path)[code]
-
-            dataset.append(dat)
-
-    return dataset
-
-
-
-def get_ordinal_suffix(day):
     if 10 <= day <= 20:
         return 'th'
     else:
@@ -34,7 +23,9 @@ def get_ordinal_suffix(day):
             return 'th'
         
 
-def day_of_year_to_date(day_of_year, year=None):
+def day_of_year_to_date(day_of_year : int, year : int = None) -> str:
+    """ Convert a day of the year to a formatted date string (e.g., "Jan 1st"). """
+
     if year is None:
         year = datetime.datetime.now().year
     
@@ -42,7 +33,7 @@ def day_of_year_to_date(day_of_year, year=None):
         date = datetime.datetime(year, 1, 1) + datetime.timedelta(days=day_of_year - 1)
         day = date.day
         month = date.strftime("%b")
-        ordinal_suffix = get_ordinal_suffix(day)
+        ordinal_suffix = _get_ordinal_suffix(day)
         return fr"{month} {day}{ordinal_suffix}"
     except ValueError:
         return "Invalid day of the year"
