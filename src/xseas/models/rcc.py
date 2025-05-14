@@ -40,17 +40,19 @@ class RCC(object):
         self.scheduling_factor = scheduling_factor
 
 
-    def fit(self):
-
-        '''
-        '''
+    def fit(self) -> None:
+        ''' Main function for fitting the model.'''
 
         self.breakpoints, self.centroid_history, self.error_history, self.breakpoint_history, self.learningrate_history, self.prediction_history =  self.single_fit()
 
 
 
 
-    def single_fit(self):
+    def single_fit(self) -> tuple:
+        '''
+            Function for fitting the model. 
+            It returns the breakpoints, centroids, error, breakpoints history, learning rate history and prediction history.
+        '''
 
         # Defining list for metrics saving
         prediction_history = []
@@ -120,23 +122,21 @@ class RCC(object):
 
 
 
-    def upgrade_breakpoints(self, old_b):
+    def upgrade_breakpoints(self, old_b : list[int]) -> tuple:
+        ''' Function for upgrading breakpoints.'''
 
         upgrade = []
         new_b = []
 
         for k in range(self.n_seas):
 
-            upgrade.append(randint(-self.learning_rate,self.learning_rate))
-                
+            upgrade.append(randint(-self.learning_rate,self.learning_rate))                
             new_b.append(old_b[k]+upgrade[k])
 
             if new_b[k]>self.len_serie-1:
-
                 new_b[k]=new_b[k]-self.len_serie-1
 
             if new_b[k]<0:
-
                 new_b[k]=self.len_serie-1+new_b[k]
 
         return upgrade, np.array(new_b)
@@ -144,11 +144,8 @@ class RCC(object):
     
 
 
-    def generate_starting_bpoints(self):
-
-        '''
-            Function for generating starting breakpoints.  
-        '''
+    def generate_starting_bpoints(self) -> tuple:
+        '''Function for generating starting breakpoints.  '''
 
         b_start = []
         upgrade = []
@@ -158,12 +155,10 @@ class RCC(object):
 
             # If it's the first season 
             if i == 0:
-
                 b_start.append(int((self.len_serie-1)/self.n_seas))
                 upgrade.append(0)
 
             else:
-            
                 b_start.append(b_start[i-1]+int((self.len_serie-1)/self.n_seas))
                 upgrade.append(0)
 
@@ -175,14 +170,11 @@ class RCC(object):
         return upgrade, b_start
 
 
-
-
-
-    def get_prediction(self):
+    def get_prediction(self) -> np.array:
+        ''' Function for getting the prediction. Predictions are returned as a time series with the index of the season for each timestep.'''
 
         # Converting breakpoints in a time series 
         prediction = np.zeros((self.len_serie,1))
-
         idx = self.generate_season_idx(self.breakpoints)
 
         for i in range(self.n_seas):
@@ -191,36 +183,33 @@ class RCC(object):
         return prediction
 
 
-    def get_final_error(self):
+    def get_final_error(self) -> float:
+        ''' Function for getting the final error.'''
 
         idx = self.generate_season_idx(self.breakpoints)
-
         centroids, error = compute_metrics(self.n_seas, self.data_to_cluster, idx)
-
         return np.sum(error)
     
-    
      
-    def get_centroids(self):
+    def get_centroids(self) -> list:
+        ''' Function for getting the centroids.'''
 
         idx = self.generate_season_idx(self.breakpoints)
-
         centroids, error = compute_metrics(self.n_seas, self.data_to_cluster, idx)
-
         return centroids
         
 
-    def get_index(self):
+    def get_index(self) -> list:
+        ''' Function for getting the index.'''
 
         idx = self.generate_season_idx(self.breakpoints)
-
         return idx
 
 
-    def generate_season_idx(self, b):
+    def generate_season_idx(self, b : list[int]) -> list:
+        ''' Function for generating the index for each season.'''
 
         idx = []
-
         if self.n_seas == 1:
             idx.append(np.arange(0, self.len_serie, 1))
 
@@ -230,7 +219,6 @@ class RCC(object):
                     idx_0 = np.arange(b[i], self.len_serie, 1)
                     idx_1 = np.arange(0, b[i+1], 1)
                     idx.append(np.concatenate((idx_0, idx_1), axis=None))
-
                 else:
                     idx.append(np.arange(b[i], b[i+1],1))
 
@@ -238,22 +226,22 @@ class RCC(object):
     
 
 
-    def check_season_len(self, idx):
+    def check_season_len(self, idx : list) -> bool:
+        ''' Function for checking the length of each season.'''
 
         len_ok = True
-
         for k in range(self.n_seas):
 
             if len(idx[k])<self.min_len:
-
                 len_ok = False
 
         return len_ok
 
 
 def compute_metrics(n_season, data_to_cluster, idx):
-    """
-    """
+    """ Function for computing the centroids and error of the clusters. 
+        TODO: add more metrics """
+    
     centroids = []
     error = []
 
