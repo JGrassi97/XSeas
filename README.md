@@ -1,4 +1,6 @@
-<img src="https://github.com/JGrassi97/XSeas/blob/main/img/logo_chatgpt.png" width="220" height="120">
+<p align="center">
+  <img src="https://github.com/JGrassi97/XSeas/blob/main/img/logo_chatgpt.png?raw=true" width="240" height="120">
+</p>
 
 Xarray-based tools for meteorological Seasons detection (XSeas) is an AI & ML based set of algorithms that enables the exploration of the meteorological seasons and their expected changes in the 21st century.
 
