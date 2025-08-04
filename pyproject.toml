@@ -1,14 +1,133 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=60.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "xseas"
-requires-python = ">=3.11"
+version = "0.0.1"
+description = "Xarray-based tools for meteorological Seasons detection"
 readme = "README.md"
-dynamic = ["version"]
+license = {file = "LICENSE"}
+authors = [
+    {name = "Jacopo Grassi", email = "jacopo.grassi@unibo.it"}
+]
+maintainers = [
+    {name = "Jacopo Grassi", email = "jacopo.grassi@unibo.it"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+keywords = [
+    "climate", 
+    "meteorology", 
+    "seasons", 
+    "clustering", 
+    "machine-learning",
+    "xarray",
+    "atmospheric-science"
+]
+requires-python = ">=3.9"
 dependencies = [
+    "numpy>=1.21.0",
+    "xarray>=2022.3.0",
+    "pandas>=1.4.0",
+    "scikit-learn>=1.1.0",
+    "tensorflow>=2.8.0",
+    "keras>=2.8.0",
+    "matplotlib>=3.5.0",
+    "geopandas>=0.10.0",
+    "tqdm>=4.64.0",
+    "PyYAML>=6.0",
+    "dask>=2022.2.0",
+    "bottleneck>=1.3.0",
+    "numexpr>=2.8.0",
+    "netCDF4>=1.6.0",
+    "h5netcdf>=1.0.0",
 ]
 
-[tool.setuptools.dynamic]
-version = {file = ["VERSION"]}
+[project.optional-dependencies]
+dev = [
+    "black>=22.0.0",
+    "flake8>=4.0.0",
+    "isort>=5.10.0",
+    "mypy>=0.950",
+    "pytest>=7.0.0",
+    "pytest-cov>=3.0.0",
+    "pytest-xdist>=2.5.0",
+]
+docs = [
+    "sphinx>=4.0.0",
+    "sphinx-rtd-theme>=1.0.0",
+    "sphinxcontrib-napoleon>=0.7",
+    "nbsphinx>=0.8.0",
+]
+jupyter = [
+    "jupyter>=1.0.0",
+    "notebook>=6.4.0",
+    "ipykernel>=6.0.0",
+]
+all = [
+    "xseas[dev,docs,jupyter]"
+]
+
+[project.urls]
+Homepage = "https://github.com/JGrassi97/XSeas"
+Documentation = "https://xseas.readthedocs.io"
+Repository = "https://github.com/JGrassi97/XSeas.git"
+"Bug Tracker" = "https://github.com/JGrassi97/XSeas/issues"
+
+[project.scripts]
+xseas = "xseas.manager.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 88
+target-version = ['py39', 'py310', 'py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["xseas"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = [
+    "tests",
+]
