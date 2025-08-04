@@ -1,12 +1,13 @@
+from typing import List
 import os
 import xarray as xr
 
 # -- UTILITY FUNCTIONS FOR LOADING DATA -- #
 # This function loads the variables from the specified base path and returns a list of datasets.
 
-def load_variables(base_path : str[str], 
-                   variables : list[str],
-                   variables_codes : list) -> list[xr.DataArray]:
+def load_variables(base_path : str, 
+                   variables : List[str],
+                   variables_codes : List) -> List[xr.DataArray]:
     """ Load variables from the specified base path and return a list of xr.DataArray.
         This utility is mainly intended for optimizing the loading of CMIP6 data.
         TODO: remove this utility and improve the data ingestion process """

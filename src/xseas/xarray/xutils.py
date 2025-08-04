@@ -61,7 +61,7 @@ def tile_labels(dataset, labels, n_seasons):
     dates_clust = X_labels(labels['breakpoints'], **lables_param)
 
     # Compute the number of years in the dataset
-    n_years = dataset.resample(time='1Y')._len
+    n_years = dataset.resample(time='YE')._len
 
     index_values = dates_clust.values
     index_values = np.tile(index_values, n_years).transpose((2, 0, 1))

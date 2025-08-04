@@ -6,7 +6,7 @@ import argparse
 import os
 import yaml
 
-from xseas.utils import load_variables
+from xseas.manager.utils import load_variables
 
 # Suppress warnings
 warnings.filterwarnings("ignore")

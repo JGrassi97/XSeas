@@ -1,70 +1,92 @@
 import numpy as np
 import xarray as xr
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error, r2_score, precision_score, recall_score
 from tqdm import tqdm
 from keras.models import Sequential
-from keras.layers import Dense
+from keras.layers import Dense, Input
 from keras.utils import to_categorical
 import keras
 import os
 
 
-def build_model(input_shape, n_seas):
-    model = Sequential()
-    model.add(Dense(n_seas, input_dim=input_shape, activation='softmax'))
+def build_model(input_shape : int, n_seas : int) -> Sequential:
+    model = Sequential([Input(shape=(input_shape,))])
+    model.add(Dense(n_seas, activation='softmax'))
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
     return model
 
 
-def train_perceptron(data, n_features, models_dir, n_year_training=50, epochs=50):
+def train_perceptron(data : np.array, n_features : int, n_year_training : int = 50, epochs : int = 50, batch_size : int = 52) -> tuple:
 
-    r2 = np.zeros((np.shape(data)[0], np.shape(data)[1]))
-    mse = np.zeros((np.shape(data)[0], np.shape(data)[1]))
-    accuracy = np.zeros((np.shape(data)[0], np.shape(data)[1]))
-    models = np.zeros((np.shape(data)[0], np.shape(data)[1]), dtype=object)
-    histories = np.zeros((np.shape(data)[0], np.shape(data)[1], epochs), dtype=object)
+    x = data[:, 0:n_features]
+    y = data[:, n_features]
 
-    for j in tqdm(range(np.shape(data)[0])):
-        for i in range(np.shape(data)[1]):
+    y = to_categorical(y)
 
-            try:
+    x_train, x_test = x[:365*n_year_training], x[365*n_year_training:]
+    y_train, y_test = y[:365*n_year_training], y[365*n_year_training:]
 
-                x = data[j,i,:,0:n_features]
-                y = data[j,i,:,n_features]
+    mod = build_model(n_features, y.shape[1])
 
-                y = to_categorical(y)
+    history = mod.fit(x_train, y_train, epochs = epochs, batch_size = batch_size, verbose = False)
 
-                x_train, x_test = x[:365*n_year_training], x[365*n_year_training:]
-                y_train, y_test = y[:365*n_year_training], y[365*n_year_training:]
+    mse = mean_squared_error(y_test, mod.predict(x_test, verbose=False))
+    r2 = r2_score(y_test, mod.predict(x_test, verbose=False))
+    accuracy = mod.evaluate(x_test, y_test, verbose=False)[1]
 
-                mod = build_model(n_features, y.shape[1])
+    metrics_dict = {'mse': mse, 'r2': r2, 'accuracy': accuracy}
 
-                history = mod.fit(x_train, y_train, epochs=epochs, batch_size=52, verbose=False)
-                histories[j,i,:] = history.history['accuracy']
+    return mod, history, metrics_dict
 
-                models[j,i] = mod
+# def train_perceptron(data, n_features, models_dir, n_year_training=50, epochs=50):
 
-                if not os.path.exists(os.path.join(models_dir, 'weights')):
-                    os.makedirs(os.path.join(models_dir, 'weights'))
+#     r2 = np.zeros((np.shape(data)[0], np.shape(data)[1]))
+#     mse = np.zeros((np.shape(data)[0], np.shape(data)[1]))
+#     accuracy = np.zeros((np.shape(data)[0], np.shape(data)[1]))
+#     models = np.zeros((np.shape(data)[0], np.shape(data)[1]), dtype=object)
+#     histories = np.zeros((np.shape(data)[0], np.shape(data)[1], epochs), dtype=object)
 
-                mse[j,i] = mean_squared_error(y_test, mod.predict(x_test, verbose=False))
-                r2[j,i] = r2_score(y_test, mod.predict(x_test, verbose=False))
-                accuracy[j,i] = mod.evaluate(x_test, y_test, verbose=False)[1]
+#     for j in tqdm(range(np.shape(data)[0])):
+#         for i in range(np.shape(data)[1]):
+
+#             try:
+
+#                 x = data[j,i,:,0:n_features]
+#                 y = data[j,i,:,n_features]
+
+#                 y = to_categorical(y)
+
+#                 x_train, x_test = x[:365*n_year_training], x[365*n_year_training:]
+#                 y_train, y_test = y[:365*n_year_training], y[365*n_year_training:]
+
+#                 mod = build_model(n_features, y.shape[1])
+
+#                 history = mod.fit(x_train, y_train, epochs=epochs, batch_size=52, verbose=False)
+#                 histories[j,i,:] = history.history['accuracy']
+
+#                 models[j,i] = mod
+
+#                 if not os.path.exists(os.path.join(models_dir, 'weights')):
+#                     os.makedirs(os.path.join(models_dir, 'weights'))
+
+#                 mse[j,i] = mean_squared_error(y_test, mod.predict(x_test, verbose=False))
+#                 r2[j,i] = r2_score(y_test, mod.predict(x_test, verbose=False))
+#                 accuracy[j,i] = mod.evaluate(x_test, y_test, verbose=False)[1]
 
 
 
-                model_filename = os.path.join(models_dir, 'weights' ,f"model_{j}_{i}.keras")
-                mod.save(model_filename)
+#                 model_filename = os.path.join(models_dir, 'weights' ,f"model_{j}_{i}.keras")
+#                 mod.save(model_filename)
             
-            except:
+#             except:
                 
-                mse[j,i] = np.nan
-                r2[j,i] = np.nan
-                accuracy[j,i] = np.nan
-                models[j,i] = None
+#                 mse[j,i] = np.nan
+#                 r2[j,i] = np.nan
+#                 accuracy[j,i] = np.nan
+#                 models[j,i] = None
         
-    return mse, r2, models, histories, accuracy
+#     return mse, r2, models, histories, accuracy
 
 
 
