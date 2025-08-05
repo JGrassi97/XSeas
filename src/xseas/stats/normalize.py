@@ -77,9 +77,9 @@ def normalize_ERA5(base_path, variables, variables_codes):
     
     datasets = []
     
-    # Load each variable
+    # Load each variable using the correct directory structure: data/ERA5/variable/final.nc
     for var_code in variables_codes:
-        file_path = os.path.join(base_path, f'{var_code}.nc')
+        file_path = os.path.join(base_path, var_code, 'final.nc')
         
         if not os.path.exists(file_path):
             print(f"⚠️  Warning: ERA5 file not found: {file_path}")

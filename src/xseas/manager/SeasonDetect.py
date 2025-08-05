@@ -180,10 +180,10 @@ class SeasonDetect:
         )
         print_data_summary(availability)
         
-        # Check ERA5 data using configured variable codes
+        # Check ERA5 data using configured variable codes and correct path structure
         era5_codes = self.era_variable_codes or ['2t', 'tp']
         era5_available = all(
-            (self.ERA5_path / f'{var}.nc').exists() 
+            (self.ERA5_path / var / 'final.nc').exists() 
             for var in era5_codes
         )
         
@@ -192,7 +192,7 @@ class SeasonDetect:
         if not era5_available:
             print("   Missing files:")
             for var in era5_codes:
-                file_path = self.ERA5_path / f'{var}.nc'
+                file_path = self.ERA5_path / var / 'final.nc'
                 if not file_path.exists():
                     print(f"   ❌ {file_path}")
 
@@ -346,11 +346,11 @@ class SeasonDetect:
         
         print("🔄 Prenormalizing ERA5 data...")
         
-        # Check if ERA5 data is available
+        # Check if ERA5 data is available using correct path structure
         era5_codes = self.era_variable_codes or ['2t', 'tp']
         missing_files = []
         for var in era5_codes:
-            file_path = self.ERA5_path / f'{var}.nc'
+            file_path = self.ERA5_path / var / 'final.nc'
             if not file_path.exists():
                 missing_files.append(str(file_path))
         
@@ -359,6 +359,7 @@ class SeasonDetect:
             for file in missing_files:
                 print(f"   {file}")
             print("   Please ensure ERA5 data is available before prenormalization.")
+            print("   Expected structure: data/ERA5/[variable]/final.nc")
             return
         
         try:

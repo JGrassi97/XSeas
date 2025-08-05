@@ -9,10 +9,10 @@ description = "Xarray-based tools for meteorological Seasons detection"
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
-    {name = "Jacopo Grassi", email = "jacopo.grassi@unibo.it"}
+    {name = "Jacopo Grassi", email = "jacopo.grassi@polito.it"}
 ]
 maintainers = [
-    {name = "Jacopo Grassi", email = "jacopo.grassi@unibo.it"}
+    {name = "Jacopo Grassi", email = "jacopo.grassi@polito.it"}
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
