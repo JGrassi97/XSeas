@@ -10,7 +10,7 @@
 
 **XSeas** is a comprehensive Python package for detecting and analyzing meteorological seasons using machine learning and advanced clustering techniques. Built on top of xarray, it provides powerful tools for seasonal pattern analysis in climate datasets, with a focus on automating the complete workflow from data preprocessing to model training.
 
-## 🌟 Features
+## Features
 
 ### Core Algorithms
 - **Radially Constrained Clustering (RCC)**: Specialized clustering algorithm for identifying seasonal breakpoints with circular time constraints
@@ -30,7 +30,7 @@
 - **Performance Metrics**: Comprehensive evaluation tools for model validation
 - **Visualization**: Built-in plotting and analysis tools
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
@@ -102,7 +102,7 @@ my_project/
 └── notebooks/           # Jupyter notebooks
 ```
 
-## ⚙️ Configuration
+## Configuration
 
 XSeas uses YAML configuration files to manage analysis parameters:
 
@@ -140,7 +140,7 @@ perceptron_params:
   epochs: 100
 ```
 
-## 🔬 Scientific Background
+## Scientific Background
 
 ### Radially Constrained Clustering (RCC)
 RCC is a specialized clustering algorithm designed for seasonal time series analysis. It identifies optimal breakpoints in annual cycles while respecting:
@@ -168,7 +168,7 @@ RCC is a specialized clustering algorithm designed for seasonal time series anal
 - Multi-model ensemble analysis
 - Bias correction and preprocessing
 
-## 📚 Documentation
+## Documentation
 
 ### Notebooks and Examples
 The `notebooks/` directory contains comprehensive examples:
@@ -183,7 +183,7 @@ Detailed documentation for all classes and functions:
 - **Normalization**: Preprocessing utilities
 - **Perceptron**: Neural network models
 
-## 🛠️ Development
+## Development
 
 ### Setting up Development Environment
 
@@ -222,61 +222,3 @@ flake8 src/ tests/
 # Type checking
 mypy src/
 ```
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on:
-- Code standards and style
-- Testing requirements
-- Documentation guidelines
-- Pull request process
-
-### Areas for Contribution
-- **New Algorithms**: Additional clustering or classification methods
-- **Data Formats**: Support for new climate data sources
-- **Visualizations**: Enhanced plotting and analysis tools
-- **Performance**: Optimization for large datasets
-- **Documentation**: Examples, tutorials, and API documentation
-
-## 📈 Performance
-
-XSeas is designed for scalability:
-- **Dask Integration**: Parallel processing for large datasets
-- **Memory Efficient**: Chunked processing and lazy evaluation
-- **GPU Support**: Compatible with GPU-accelerated computing
-- **Cloud Ready**: Works with cloud-based data storage
-
-## 🏆 Citation
-
-If you use XSeas in your research, please cite:
-
-```bibtex
-@software{grassi2024xseas,
-  author = {Grassi, Jacopo},
-  title = {XSeas: Xarray-based tools for meteorological Seasons detection},
-  year = {2024},
-  publisher = {GitHub},
-  url = {https://github.com/JGrassi97/XSeas}
-}
-```
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **xarray**: For providing the foundation for labeled data manipulation
-- **scikit-learn**: For machine learning utilities and metrics
-- **dask**: For parallel and distributed computing capabilities
-- **Climate Data Community**: For open data and collaborative research
-
-## 📞 Support and Contact
-
-- **Issues**: Report bugs and request features on [GitHub Issues](https://github.com/JGrassi97/XSeas/issues)
-- **Discussions**: Join community discussions on [GitHub Discussions](https://github.com/JGrassi97/XSeas/discussions)
-- **Email**: For direct contact, reach out to [jacopo.grassi@unibo.it](mailto:jacopo.grassi@unibo.it)
-
----
-
-**XSeas** - Advancing seasonal analysis in climate science through machine learning and automation. 🌍✨
