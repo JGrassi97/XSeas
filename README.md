@@ -154,7 +154,7 @@ RCC is a specialized clustering algorithm designed for seasonal time series anal
 - **Climate Variability**: Analyze seasonal shifts under climate change
 - **Extreme Events**: Study seasonal patterns in extreme weather
 
-## 📊 Supported Data
+## Supported Data
 
 ### ERA5 Reanalysis
 - Temperature (2-meter, surface)
