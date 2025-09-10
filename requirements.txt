@@ -7,12 +7,17 @@ pandas>=1.4.0
 scikit-learn>=1.1.0
 tensorflow>=2.8.0
 keras>=2.8.0
+pymannkendall>=1.4.1
 
 # Data visualization
 matplotlib>=3.5.0
+seaborn>=0.11.0
+cmasher>=1.0.0
 
 # Geospatial and climate data
 geopandas>=0.10.0
+rioxarray>=0.14.0
+cartopy>=0.20.0
 
 # Progress bars and UI
 tqdm>=4.64.0
