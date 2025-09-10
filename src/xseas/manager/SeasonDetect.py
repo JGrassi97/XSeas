@@ -14,7 +14,7 @@ import numpy as np
 
 from xseas.stats.normalize import normalize_CMIP6, normalize_ERA5
 from xseas.xarray import tile_labels, XRCC
-from xseas.models import train_perceptron
+from xseas.models import train_perceptron_spatial
 from xseas.manager.utils import (
     load_variables, 
     validate_config, 
@@ -478,31 +478,46 @@ class SeasonDetect:
         print(f"   Epochs: {epochs_count}")
         
         try:
-            # Load data
+            # Load prenormalized dataset and clustering labels
             dataset_train = xr.open_dataset(self.prenorm_ERA5_path)
-            labels = xr.open_dataset(self.clustering_path)
-            
-            # Add labels to training data
-            dataset_train = tile_labels(dataset_train, labels, self.n_seasons)
-            
-            # Convert to array format expected by training function
-            training_array = dataset_train.to_array().values.transpose((2, 3, 1, 0))
-            
+            clustering_ds = xr.open_dataset(self.clustering_path)
+
+            # Attach labels
+            dataset_train = tile_labels(dataset_train, clustering_ds, self.n_seasons)
+
+            # Ensure consistent variable ordering (exclude labels from features list)
+            feature_vars = [v for v in dataset_train.data_vars if v != 'labels']
+            feature_vars_sorted = sorted(feature_vars)
+            dataset_ordered = dataset_train[feature_vars_sorted + ['labels']]
+
+            # Build numpy array (lat, lon, time, features+1)
+            arr = dataset_ordered.to_array().values  # shape (features+1, time, lat, lon)
+            arr = arr.transpose(2, 3, 1, 0)  # (lat, lon, time, features+1)
+
+            n_features = arr.shape[-1] - 1
+
             # Create output directory
             self.perceptron_path.mkdir(parents=True, exist_ok=True)
-            
-            # Note: The original train_perceptron function needs to be adapted
-            # for spatial training. This is a simplified version.
-            print("⚠️  Spatial perceptron training needs to be implemented.")
-            print("    Current train_perceptron function is for single time series.")
-            
-            # Update status
+
+            print("🤖 Avvio training perceptron spaziale...")
+            mse, r2, acc, models, histories = train_perceptron_spatial(
+                arr,
+                n_features=n_features,
+                n_year_training=n_years,
+                epochs=epochs_count,
+                batch_size=52,
+                models_dir=self.perceptron_path,
+                verbose=False
+            )
+
+            # Salva metriche
+            self._save_training_metrics(dataset_train, mse, r2, acc)
+
             self.is_perceptron_trained = True
-            
-            print("✅ Perceptron training placeholder complete")
-            
+            print("✅ Training perceptron completato")
+
         except Exception as e:
-            print(f"❌ Error training perceptron: {e}")
+            print(f"❌ Errore nel training perceptron: {e}")
             raise
     
     def run_full_workflow(self) -> None:

@@ -8,6 +8,9 @@ from keras.layers import Dense, Input
 from keras.utils import to_categorical
 import keras
 import os
+from pathlib import Path
+from tqdm import tqdm
+
 
 
 def build_model(input_shape : int, n_seas : int) -> Sequential:
@@ -38,6 +41,107 @@ def train_perceptron(data : np.array, n_features : int, n_year_training : int = 
     metrics_dict = {'mse': mse, 'r2': r2, 'accuracy': accuracy}
 
     return mod, history, metrics_dict
+
+
+def train_perceptron_spatial(
+    data: np.ndarray,
+    n_features: int,
+    n_year_training: int,
+    epochs: int,
+    batch_size: int,
+    models_dir: str | Path,
+    min_years_test: int = 1,
+    verbose: bool = False
+) -> tuple:
+    """Addestra un modello perceptron per ciascun punto griglia.
+
+    Parameters
+    ----------
+    data : np.ndarray
+        Array (lat, lon, time, n_features+1) con ultima feature = etichetta intera.
+    n_features : int
+        Numero di feature climatiche.
+    n_year_training : int
+        Anni da usare per training (365 giorni per anno). Se eccede disponibilità viene ridotto.
+    epochs : int
+        Epoche di training.
+    batch_size : int
+        Batch size.
+    models_dir : str | Path
+        Directory dove salvare i modelli (sottocartella 'weights').
+    min_years_test : int
+        Anni minimi richiesti per test set.
+    verbose : bool
+        Se True stampa progressi.
+
+    Returns
+    -------
+    mse, r2, accuracy, models, histories
+        Metriche (lat, lon) e lista storici accuracy (lat, lon, epochs) opzionale.
+    """
+    models_dir = Path(models_dir)
+    weights_dir = models_dir / 'weights'
+    weights_dir.mkdir(parents=True, exist_ok=True)
+
+    lat_n, lon_n, time_n, total_feat = data.shape
+    assert total_feat == n_features + 1, "L'array deve contenere le label come ultima colonna"
+
+    # Calcola anni disponibili
+    available_years = time_n // 365
+    if available_years < (n_year_training + min_years_test):
+        # Riduci training per lasciare almeno un anno test se possibile
+        n_year_training = max(1, available_years - min_years_test)
+    train_days = 365 * n_year_training
+
+    mse = np.full((lat_n, lon_n), np.nan, dtype=float)
+    r2 = np.full((lat_n, lon_n), np.nan, dtype=float)
+    accuracy = np.full((lat_n, lon_n), np.nan, dtype=float)
+    models = np.empty((lat_n, lon_n), dtype=object)
+    histories = np.empty((lat_n, lon_n), dtype=object)
+
+    for j in range(lat_n):
+        print(f"Training row {j+1}/{lat_n}")
+        for i in tqdm(range(lon_n)):
+            series = data[j, i]
+            x = series[:, :n_features]
+            y = series[:, n_features]
+
+            # Verifica dati sufficienti
+            if np.isnan(x).all() or np.isnan(y).all():
+                continue
+            if train_days >= len(x) - 365:  # lascia almeno un anno test se possibile
+                continue
+
+            try:
+                y_cat = to_categorical(y)
+                n_classes = y_cat.shape[1]
+                x_train, x_test = x[:train_days], x[train_days:]
+                y_train, y_test = y_cat[:train_days], y_cat[train_days:]
+
+                mod = build_model(n_features, n_classes)
+                history = mod.fit(
+                    x_train,
+                    y_train,
+                    epochs=epochs,
+                    batch_size=batch_size,
+                    verbose=False,
+                )
+
+                y_pred_soft = mod.predict(x_test, verbose=False)
+                mse[j, i] = mean_squared_error(y_test, y_pred_soft)
+                r2[j, i] = r2_score(y_test, y_pred_soft)
+                accuracy[j, i] = mod.evaluate(x_test, y_test, verbose=False)[1]
+
+                # Salva modello
+                mod.save(weights_dir / f"model_{j}_{i}.keras")
+                models[j, i] = mod
+                histories[j, i] = history.history.get('accuracy')
+            except Exception as e:
+                if verbose:
+                    print(f"[WARN] pixel ({j},{i}) skipped: {e}")
+                continue
+
+    return mse, r2, accuracy, models, histories
 
 # def train_perceptron(data, n_features, models_dir, n_year_training=50, epochs=50):
 
