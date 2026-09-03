@@ -55,7 +55,7 @@ def rolling_zscore_complete(da, window_size=30):
     return zscore_da
 
 
-def normalize_ERA5(base_path, variables, variables_codes):
+def normalize_ERA5(base_path, variables, variables_codes, doy_window_size=15):
     """
     Normalize ERA5 data using rolling window techniques.
     
@@ -132,8 +132,8 @@ def normalize_ERA5(base_path, variables, variables_codes):
     print(f"✅ Merged dataset shape: {dataset_merged.dims}")
     
     # Apply normalization steps
-    print("🔄 Applying day-of-year rolling average (window=15 days)...")
-    dataset_doy = rolling_doy_complete(dataset_merged, window_size=15)
+    print(f"🔄 Applying day-of-year rolling average (window={doy_window_size} days)...")
+    dataset_doy = rolling_doy_complete(dataset_merged, window_size=doy_window_size)
     
     print("🔄 Applying rolling z-score normalization (window=10 years)...")
     dataset_normalized = rolling_zscore_complete(dataset_doy, window_size=365*10)
@@ -142,11 +142,12 @@ def normalize_ERA5(base_path, variables, variables_codes):
     dataset_normalized.attrs.update({
         'description': 'ERA5 data normalized with rolling window techniques',
         'normalization_steps': [
-            'Day-of-year rolling average (15 days)',
+            f'Day-of-year rolling average ({doy_window_size} days)',
             'Rolling z-score normalization (10 years)'
         ],
         'created_by': 'XSeas normalize_ERA5',
-        'variables': list(variables_codes)
+        'variables': list(variables_codes),
+        'doy_window_size_days': int(doy_window_size)
     })
     
     print("✅ ERA5 normalization completed")

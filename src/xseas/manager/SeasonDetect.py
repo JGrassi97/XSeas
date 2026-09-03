@@ -127,6 +127,12 @@ class SeasonDetect:
         self.clustering_params.setdefault('iters', 200)
         self.clustering_params.setdefault('learning_rate', 1)
         self.clustering_params.setdefault('min_len', 30)
+        self.clustering_params.setdefault('doy_window_days', 15)
+
+        # ERA5 preprocessing sensitivity parameter
+        self.era5_doy_window_days = int(self.clustering_params['doy_window_days'])
+        if self.era5_doy_window_days < 0:
+            raise ValueError("clustering_params.doy_window_days must be >= 0")
         
         # Projection parameters
         self.projection_params = self.config.get('parameters_projections', {})
@@ -158,7 +164,7 @@ class SeasonDetect:
     def _get_prenorm_path(self, model: str) -> Optional[Path]:
         """Get prenormalized data path for a model if it exists."""
         if model == 'ERA5':
-            path = self.ERA5_path / 'prenormalized' / 'ERA5_prenorm.nc'
+            path = self.ERA5_path / 'prenormalized' / f'ERA5_prenorm_w{self.era5_doy_window_days}.nc'
         else:
             path = self.CMIP6_path / model / 'prenormalized' / f'{model}_prenorm.nc'
         
@@ -223,6 +229,7 @@ class SeasonDetect:
             config_summary.append(f"ERA codes: {', '.join(self.era_variable_codes)}")
         if self.cmip_variable_codes:
             config_summary.append(f"CMIP codes: {', '.join(self.cmip_variable_codes)}")
+        config_summary.append(f"ERA5 DOY window: {self.era5_doy_window_days} days")
         if 'weights' in self.clustering_params:
             config_summary.append(f"Weights: {self.clustering_params['weights']}")
         
@@ -371,11 +378,12 @@ class SeasonDetect:
             dataset_prenorm = normalize_ERA5(
                 str(self.ERA5_path),
                 self.variables,  # Not used for ERA5 but kept for consistency
-                era5_codes
+                era5_codes,
+                doy_window_size=self.era5_doy_window_days
             )
             
             # Save prenormalized data
-            output_path = prenorm_dir / 'ERA5_prenorm.nc'
+            output_path = prenorm_dir / f'ERA5_prenorm_w{self.era5_doy_window_days}.nc'
             print(f"💾 Saving prenormalized ERA5 data to: {output_path}")
             
             # Add compression for efficiency
