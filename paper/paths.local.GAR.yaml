@@ -1,0 +1,7 @@
+# Path for main figures
+FIGURES_DIR : /Users/jacopograssi/Documents/XSeas/working_folder_GAR/figures
+# Path for supplementary figures
+SUPP_FIGURES_DIR : /Users/jacopograssi/Documents/XSeas/working_folder_GAR/figures_supplementary
+
+# Path for progect data
+WORKING_FOLDER : /Users/jacopograssi/Documents/XSeas/working_folder_GAR

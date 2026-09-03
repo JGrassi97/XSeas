@@ -1,0 +1,30 @@
+# Include base requirements
+-r requirements.txt
+
+# Development tools
+black>=22.0.0
+flake8>=4.0.0
+isort>=5.10.0
+mypy>=0.950
+
+# Testing
+pytest>=7.0.0
+pytest-cov>=3.0.0
+pytest-xdist>=2.5.0
+
+# Documentation
+sphinx>=4.0.0
+sphinx-rtd-theme>=1.0.0
+sphinxcontrib-napoleon>=0.7
+
+# Jupyter and notebooks
+jupyter>=1.0.0
+notebook>=6.4.0
+ipykernel>=6.0.0
+nbsphinx>=0.8.0
+
+# Build tools
+build>=0.7.0
+twine>=4.0.0
+setuptools>=60.0.0
+wheel>=0.37.0

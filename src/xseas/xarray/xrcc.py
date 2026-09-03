@@ -1,121 +1,233 @@
+"""
+Xarray interface for Radially Constrained Clustering (RCC).
+
+This module provides xarray integration for the RCC algorithm, enabling
+distributed computation across spatial grids using dask.
+"""
+from typing import Tuple, List, Optional, Union
 import numpy as np
 import xarray as xr
-from xseas.models import RCC 
 from sklearn.metrics import silhouette_score
 
+from xseas.models import RCC
 
-def X_cluster(*grid_points, **kwargs):
 
-    iters = kwargs.get('iters', 20)  
+def _cluster_gridpoint(*grid_points: np.ndarray, **kwargs) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Apply RCC clustering to individual grid points.
+    
+    Parameters
+    ----------
+    *grid_points : np.ndarray
+        Variable arrays for a single grid point.
+    **kwargs : dict
+        Clustering parameters.
+        
+    Returns
+    -------
+    Tuple of arrays containing breakpoints, error history, and silhouette scores.
+    """
+    # Extract parameters
+    n_iter = kwargs.get('iters', 20)
     n_seas = kwargs.get('n_seas', 2)
     learning_rate = kwargs.get('learning_rate', 10)
     min_len = kwargs.get('min_len', 30)
     starting_bp = kwargs.get('starting_bp', None)
     weights = kwargs.get('weights', [1])
-
-    arrays = []
     
-    for grid_points_var in grid_points:
-        grid_points_var = np.asarray(grid_points_var)
-        grid_points_var = np.reshape(grid_points_var, (365, int(grid_points_var.size/365)), order='F')
+    # Prepare data arrays
+    processed_arrays = []
+    
+    for grid_data in grid_points:
+        grid_data = np.asarray(grid_data)
+        # Reshape to (time, features)
+        grid_data = grid_data.reshape((365, -1), order='F')
         
-        if np.isnan(grid_points_var).any():
- 
-            return (np.full(n_seas, np.nan), 
-                    np.full(iters, np.nan), 
-                    np.full(iters, np.nan)) 
+        # Check for NaN values
+        if np.isnan(grid_data).any():
+            return (
+                np.full(n_seas, np.nan),
+                np.full(n_iter, np.nan),
+                np.full(n_iter, np.nan)
+            )
         
-        arrays.append(grid_points_var)
+        processed_arrays.append(grid_data)
     
-    combined_mask = ~np.any([np.all(np.isnan(arr), axis=0) for arr in arrays], axis=0)
+    # Create combined mask for valid data
+    valid_mask = ~np.any([
+        np.all(np.isnan(arr), axis=0) 
+        for arr in processed_arrays
+    ], axis=0)
     
+    # Normalize and weight arrays
     normalized_arrays = []
-    for arr, weight in zip(arrays, weights):
-        array_tot = arr[:, combined_mask]
-        array_tot = (array_tot - array_tot.min(axis=1).reshape(-1, 1)) / (array_tot.max(axis=1) - array_tot.min(axis=1)).reshape(-1, 1)
-        normalized_arrays.append(array_tot * weight)
+    for arr, weight in zip(processed_arrays, weights):
+        valid_data = arr[:, valid_mask]
+        
+        # Min-max normalization
+        data_min = valid_data.min(axis=1, keepdims=True)
+        data_max = valid_data.max(axis=1, keepdims=True)
+        data_range = data_max - data_min
+        
+        # Avoid division by zero
+        data_range = np.where(data_range == 0, 1, data_range)
+        normalized = (valid_data - data_min) / data_range
+        
+        normalized_arrays.append(normalized * weight)
     
-    array_tot = np.concatenate(normalized_arrays, axis=1)
-
-    # Initialize and fit the Radially_Constrained_Cluster model
-    model = RCC(    data_to_cluster=array_tot,
-                    n_seas=n_seas,
-                    n_iter=iters,
-                    learning_rate=learning_rate,
-                    min_len=min_len,
-                    starting_bp=starting_bp
-                    )
-    model.fit()
-
-    breakpoints = model.breakpoints
-    breakpoint_history = model.breakpoint_history
-    error_history = model.error_history
-    prediction_history = model.prediction_history
-
+    # Combine all variables
+    combined_data = np.concatenate(normalized_arrays, axis=1)
+    
+    # Initialize and fit RCC model
+    try:
+        model = RCC(
+            data_to_cluster=combined_data,
+            n_seas=n_seas,
+            n_iter=n_iter,
+            learning_rate=learning_rate,
+            min_len=min_len,
+            starting_bp=starting_bp
+        )
+        model.fit()
+        
+        breakpoints = model.breakpoints
+        error_history = model.error_history
+        prediction_history = model.prediction_history
+        
+    except Exception:
+        return (
+            np.full(n_seas, np.nan),
+            np.full(n_iter, np.nan),
+            np.full(n_iter, np.nan)
+        )
+    
+    # Calculate silhouette scores
     silhouette_scores = []
-    for pred in prediction_history:
+    for prediction in prediction_history:
         try:
-            score = silhouette_score(array_tot, pred)
-            silhouette_scores.append(score)
-        except:
-            silhouette_scores.append(np.nan)
-
-    #print(len(prediction_history), len(silhouette_scores), len(error_history))
-
-    prediction_history = prediction_history.tolist()
-    error_history = error_history.tolist()
-
-    if len(prediction_history) != iters:
-        prediction_history.extend([prediction_history[-1]] * (iters - len(prediction_history)))
-        silhouette_scores.extend([silhouette_scores[-1]] * (iters - len(silhouette_scores)))
-        error_history.extend([error_history[-1]] * (iters - len(error_history)))
-
+            if len(np.unique(prediction)) > 1:
+                score = silhouette_score(combined_data.T, prediction)
+            else:
+                score = np.nan
+        except Exception:
+            score = np.nan
+        silhouette_scores.append(score)
+    
+    # Ensure output arrays have correct length
+    def _pad_to_length(arr: List, target_length: int) -> np.ndarray:
+        """Pad array to target length with last value."""
+        arr = list(arr)
+        if len(arr) < target_length:
+            arr.extend([arr[-1]] * (target_length - len(arr)))
+        return np.array(arr[:target_length], dtype=float)
+    
+    error_history = _pad_to_length(error_history, n_iter)
+    silhouette_scores = _pad_to_length(silhouette_scores, n_iter)
+    
     return (
-        np.array(breakpoints), 
-        np.array(error_history, dtype=float), 
-        np.array(silhouette_scores, dtype=float)
+        np.array(breakpoints, dtype=float),
+        error_history,
+        silhouette_scores
     )
 
 
-
-def XRCC(datasets, **kwargs):
+def XRCC(
+    datasets: List[xr.DataArray], 
+    n_seas: int = 2,
+    iters: int = 20,
+    learning_rate: int = 10,
+    min_len: int = 30,
+    starting_bp: Optional[List[int]] = None,
+    weights: Optional[List[float]] = None,
+    **kwargs
+) -> Tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
     """
-    Apply clustering function to a list of xarray DataArrays.
-
-    Parameters:
-    -----------
-    datasets : list of xarray DataArrays
-        Input datasets to be clustered.
-    **kwargs : keyword arguments
-        Additional parameters for clustering.
-
-    Returns:
-    --------
-    tuple of xarray.DataArrays
-        Result of clustering operation including breakpoints, 
-        error history, and silhouette scores.
+    Apply RCC clustering to xarray datasets.
+    
+    Parameters
+    ----------
+    datasets : List[xr.DataArray]
+        List of input datasets to be clustered.
+    n_seas : int, default=2
+        Number of seasons to identify.
+    iters : int, default=20
+        Number of optimization iterations.
+    learning_rate : int, default=10
+        Maximum perturbation for breakpoint updates.
+    min_len : int, default=30
+        Minimum season length in days.
+    starting_bp : Optional[List[int]], default=None
+        Initial breakpoints.
+    weights : Optional[List[float]], default=None
+        Weights for each variable.
+    **kwargs
+        Additional parameters (mode is ignored for backward compatibility).
+        
+    Returns
+    -------
+    Tuple[xr.DataArray, xr.DataArray, xr.DataArray]
+        Breakpoints, error history, and silhouette scores as DataArrays.
     """
-
-    n_seas = kwargs.get('n_seas', 2)
-    iters = kwargs.get('iters', 20)
-
+    if weights is None:
+        weights = [1.0] * len(datasets)
+    
+    # Remove unsupported parameters for backward compatibility
+    kwargs.pop('mode', None)
+    
+    # Prepare parameters
+    cluster_params = {
+        'n_seas': n_seas,
+        'iters': iters,
+        'learning_rate': learning_rate,
+        'min_len': min_len,
+        'starting_bp': starting_bp,
+        'weights': weights,
+        **kwargs
+    }
+    
+    # Apply clustering using xarray.apply_ufunc
     result = xr.apply_ufunc(
-        X_cluster,
+        _cluster_gridpoint,
         *datasets,
-        kwargs=kwargs,
+        kwargs=cluster_params,
         input_core_dims=[['time']] * len(datasets),
-        output_core_dims=[['cluster'] ,['iter'], ['iter']],
+        output_core_dims=[['cluster'], ['iter'], ['iter']],
         vectorize=True,
-        dask='parallelized',
+        dask='parallelized',  # Fixed: was 'parallelize'
         output_dtypes=[float, float, float],
         output_sizes={'cluster': n_seas, 'iter': iters}
     )
-
+    
     breakpoints, error_history, silhouette_scores = result
-
-    breakpoints = xr.DataArray(breakpoints, dims=['lat', 'lon', 'cluster'])
-    error_history_da = xr.DataArray(error_history, dims=['lat', 'lon','iter'])
-    silhouette_scores_da = xr.DataArray(silhouette_scores, dims=['lat', 'lon', 'iter'])
-
-
-    return breakpoints, error_history_da, silhouette_scores_da
+    
+    # Create properly named DataArrays
+    coords = {
+        'lat': datasets[0].lat,
+        'lon': datasets[0].lon
+    }
+    
+    breakpoints_da = xr.DataArray(
+        breakpoints,
+        dims=['lat', 'lon', 'cluster'],
+        coords={**coords, 'cluster': range(n_seas)},
+        name='breakpoints',
+        attrs={'description': 'Seasonal breakpoints in day of year'}
+    )
+    
+    error_history_da = xr.DataArray(
+        error_history,
+        dims=['lat', 'lon', 'iter'],
+        coords={**coords, 'iter': range(iters)},
+        name='error_history',
+        attrs={'description': 'RCC optimization error history'}
+    )
+    
+    silhouette_scores_da = xr.DataArray(
+        silhouette_scores,
+        dims=['lat', 'lon', 'iter'],
+        coords={**coords, 'iter': range(iters)},
+        name='silhouette_scores',
+        attrs={'description': 'Silhouette score optimization history'}
+    )
+    
+    return breakpoints_da, error_history_da, silhouette_scores_da

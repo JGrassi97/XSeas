@@ -1,3 +1,10 @@
+"""
+Utility functions for xarray operations in seasonal analysis.
+
+This module provides functions for generating seasonal labels and predictions
+from breakpoint data using xarray's apply_ufunc capabilities.
+"""
+from typing import Dict, Any
 import numpy as np
 import xarray as xr
 
@@ -7,7 +14,7 @@ def get_prediction(b, **kwargs):
     prediction = np.zeros(365)
 
     try:
-        idx = generate_season_idx(b, n_seas)
+        idx = _generate_season_indices(b, n_seas)
         for i in range(n_seas):
             prediction[idx[i].astype(int)] = i
 
@@ -18,7 +25,7 @@ def get_prediction(b, **kwargs):
 
 
 
-def generate_season_idx(b, n_seas):
+def _generate_season_indices(b, n_seas):
     idx = []
 
     if n_seas == 1:
@@ -38,7 +45,7 @@ def generate_season_idx(b, n_seas):
 
 
 
-def X_labels(breakpoints: xr.DataArray, **kwargs):
+def generate_labels(breakpoints: xr.DataArray, **kwargs):
     dates_clust = xr.apply_ufunc(
         get_prediction, 
         breakpoints, 
@@ -56,15 +63,65 @@ def X_labels(breakpoints: xr.DataArray, **kwargs):
 
 
 def tile_labels(dataset, labels, n_seasons):
-    
-    lables_param = {'n_seas':n_seasons }
-    dates_clust = X_labels(labels['breakpoints'], **lables_param)
+    """Aggiunge le etichette stagionali all'intero asse temporale del dataset.
 
-    # Compute the number of years in the dataset
-    n_years = dataset.resample(time='YE')._len
+    Genera le etichette (365 valori per anno) a partire dai breakpoint e le
+    ripete lungo la dimensione *time* del dataset, gestendo:
+      - Dataset con numero di giorni multiplo/non multiplo di 365
+      - Presenza di anni bisestili (elimina il giorno 366 se esiste)
+      - Breakpoint mancanti (inserisce NaN)
+    """
+    # Parametri per generare le etichette giornaliere (0..n_seasons-1)
+    label_params = {'n_seas': n_seasons}
+    bp = labels['breakpoints']
 
-    index_values = dates_clust.values
-    index_values = np.tile(index_values, n_years).transpose((2, 0, 1))
-    dataset['labels'] = (('time', 'lat', 'lon'), index_values)
+    # Genera labels shape: (lat, lon, dayofyear=365)
+    dates_clust = generate_labels(bp, **label_params)
+
+    # Base year pattern (365, lat, lon)
+    base_year = dates_clust.transpose('dayofyear', 'lat', 'lon').values  # (365, lat, lon)
+
+    time = dataset['time']
+    time_len = time.size
+
+    # Gestione anni bisestili nel dataset: se esistono DOY=366 lo rimuoviamo
+    # Calcoliamo dayofyear (xarray gestisce correttamente calendari standard)
+    if 'dayofyear' in time.dt.__dir__():
+        dayofyear = time.dt.dayofyear.values
+    else:
+        # fallback: costruiamo sequenza semplice
+        dayofyear = (np.arange(time_len) % 365) + 1
+
+    # Conteggio anni stimato come floor
+    n_full_years = time_len // 365
+    remainder = time_len % 365
+
+    # Ripetiamo il pattern per il numero totale necessario (incluso remainder)
+    repeat_needed = n_full_years + (1 if remainder else 0)
+    tiled = np.tile(base_year, (repeat_needed, 1, 1))  # (repeat_needed*365, lat, lon)
+
+    # Se abbiamo leap days nel dataset (DOY=366) li mappiamo al giorno 365
+    # Creiamo array finale rispettando l'ordine temporale originale
+    labels_time = np.empty((time_len, base_year.shape[1], base_year.shape[2]), dtype=base_year.dtype)
+
+    # Indici globali per il pattern ripetuto
+    for i in range(time_len):
+        doy = dayofyear[i]
+        if doy == 366:
+            doy = 365  # Collassa giorno 366 su 365
+        # Posizione nel pattern ripetuto
+        year_index = (i // 365)
+        day_index = doy - 1  # 0-based
+        labels_time[i] = tiled[year_index * 365 + day_index]
+
+    # Assegna (time, lat, lon)
+    dataset = dataset.copy()
+    dataset['labels'] = (('time', 'lat', 'lon'), labels_time)
 
     return dataset
+
+
+
+
+# Backward compatibility
+X_labels = generate_labels  # Alias for backward compatibility
